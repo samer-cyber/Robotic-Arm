@@ -8,20 +8,22 @@
 :root{
   --bg:#12161d;--panel:#1a1f28ee;--line:#2c3340;--fg:#e8ebf1;--dim:#8d96a8;
   --accent:#5aa9e6;--ghost:#5aa9e6;--good:#4ade80;--warn:#fbbf24;--bad:#f87171;
+  /* three type steps, ~1.27x apart: labels, body, title */
+  --fs-cap:11px;--fs-body:14px;--fs-title:18px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
-  font:13px/1.45 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  font:var(--fs-body)/1.45 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden}
 #view{position:fixed;inset:0}
-aside{position:fixed;top:12px;right:12px;bottom:12px;width:330px;max-width:calc(100vw - 24px);
+aside{position:fixed;top:12px;right:12px;bottom:12px;width:344px;max-width:calc(100vw - 24px);
   background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;
   padding:14px;overflow:auto;display:flex;flex-direction:column;gap:14px}
 @media(max-width:700px){aside{top:auto;height:46vh;left:12px;width:auto}}
-h1{font-size:14px;margin:0;font-weight:650;letter-spacing:.01em}
-h2{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin:0 0 8px;font-weight:600}
+h1{font-size:var(--fs-title);margin:0;font-weight:650;letter-spacing:.01em}
+h2{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin:0 0 8px;font-weight:600}
 .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .top{display:flex;align-items:center;gap:8px}
-.top a{margin-left:auto;color:var(--dim);text-decoration:none;font-size:12px}
+.top a{margin-left:auto;color:var(--dim);text-decoration:none;font-size:var(--fs-cap)}
 .top a:hover{color:var(--fg)}
 button{background:#252b36;color:var(--fg);border:1px solid var(--line);border-radius:7px;
   padding:6px 10px;font:inherit;cursor:pointer}
@@ -30,21 +32,21 @@ button:disabled{opacity:.45;cursor:default}
 button.p{background:var(--accent);border-color:var(--accent);color:#07131f;font-weight:650}
 button.stop{background:var(--bad);border-color:var(--bad);color:#1d0606;font-weight:750}
 button.on{border-color:var(--accent);color:var(--accent)}
-.pill{padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:650;border:1px solid var(--line);color:var(--dim)}
+.pill{padding:2px 8px;border-radius:99px;font-size:var(--fs-cap);font-weight:650;border:1px solid var(--line);color:var(--dim)}
 .pill.ok{color:var(--good);border-color:#2b5138}.pill.warn{color:var(--warn);border-color:#5a4a1e}
 .pill.bad{color:var(--bad);border-color:#5a2b2b}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th{font-weight:500;color:var(--dim);text-align:right;padding:2px 4px;font-size:11px}
+th{font-weight:500;color:var(--dim);text-align:right;padding:2px 4px;font-size:var(--fs-cap)}
 th:first-child,td:first-child{text-align:left}
 td{text-align:right;padding:3px 4px;border-top:1px solid #232937}
 td.g{color:var(--ghost)}
-.msg{font-size:12px;color:var(--dim);min-height:1.4em}
+.msg{color:var(--dim);min-height:1.4em}
 .msg.bad{color:var(--bad)}.msg.ok{color:var(--good)}
 label.chk{display:flex;gap:6px;align-items:center;color:var(--dim);cursor:pointer}
 input[type=range]{flex:1;accent-color:var(--accent)}
-.kbd{font:11px ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--dim)}
-.hint{color:var(--dim);font-size:11.5px}
-#err{position:fixed;left:16px;bottom:16px;color:var(--bad);font-size:12px;max-width:50vw}
+.kbd{font:var(--fs-cap) ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--dim)}
+.hint{color:var(--dim);font-size:var(--fs-cap)}
+#err{position:fixed;left:16px;bottom:16px;color:var(--bad);max-width:50vw}
 </style>
 </head>
 <body>
@@ -77,7 +79,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     <div class="row">
       <span class="hint" style="width:34px">feed</span>
       <input type="range" id="feed" min="0.05" max="1" step="0.05" value="0.3">
-      <span id="feedv" class="hint" style="width:30px;text-align:right">0.30</span>
+      <span id="feedv" class="hint" style="width:32px;text-align:right">0.30</span>
     </div>
     <div id="msg" class="msg"></div>
   </section>
@@ -152,7 +154,7 @@ const axes = new THREE.AxesHelper(80); axes.position.set(0, 0, 0.5); scene.add(a
 
 // Centre the arm in the space LEFT of the side panel, not behind it.
 function fit() {
-  const W = innerWidth, H = innerHeight, P = W > 700 ? 354 : 0;
+  const W = innerWidth, H = innerHeight, P = W > 700 ? 368 : 0;
   camera.aspect = W / H;
   if (P) camera.setViewOffset(W + P, H, P, 0, W, H); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
