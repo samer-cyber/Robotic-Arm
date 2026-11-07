@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>arm_vla</name>
+  <version>0.1.0</version>
+  <description>Vision-language-action pipeline for a 3-DOF arm: OAK-D SR spatial
+    detection, analytical inverse kinematics, ESP32 stepper execution.</description>
+  <maintainer email="samerhaddadin06@gmail.com">Samer</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+  <exec_depend>arm_vla_interfaces</exec_depend>
+  <exec_depend>armlink_py</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

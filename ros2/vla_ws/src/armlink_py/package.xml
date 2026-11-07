@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>armlink_py</name>
+  <version>0.1.0</version>
+  <description>
+    ROS 2 wrapper around the existing armlink host driver. The driver source of
+    truth lives in Host/armlink; sync.sh copies it here at build prep time.
+    Do not edit the copy.
+  </description>
+  <maintainer email="samerhaddadin06@gmail.com">Samer</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

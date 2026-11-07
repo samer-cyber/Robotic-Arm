@@ -1,0 +1,14 @@
+# Ask the vision node for ONE measurement of a named target.
+# Deliberately a service, not a topic: a touch command needs a single
+# committed number, not whatever frame happened to arrive last.
+string label              # "red", "blue", "cup" ... see the detector vocabulary
+---
+bool success
+string message            # human-readable reason when success is false
+geometry_msgs/PointStamped point_base     # mm, arm base frame
+geometry_msgs/PointStamped point_camera   # mm, camera optical frame
+float32 confidence        # 0..1
+uint32 pixel_u
+uint32 pixel_v
+float32 depth_mm
+uint32 depth_samples      # valid depth pixels behind the median

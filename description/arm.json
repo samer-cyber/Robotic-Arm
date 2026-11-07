@@ -1,0 +1,47 @@
+{
+  "name": "robotic_arm",
+  "units": {"length": "mm", "angle": "deg"},
+  "source": "Fusion 360 'Full arm (no PCB) v25', 2026-11-07. Zero pose is the CAD pose: arm straight up.",
+  "conventions": [
+    "Every joint and tcp position below is WORLD coordinates in the zero pose (the CAD pose).",
+    "All link frames are world-aligned in the zero pose, so a link's frame is just its parent joint's position.",
+    "Joint angles here are MODEL angles. firmware_map converts: model = sign * firmware + offset."
+  ],
+
+  "links": [
+    {"name": "base_link",   "meshes": ["base", "motor_j1"],    "mass_kg": 0.90},
+    {"name": "turret",      "meshes": ["turret", "motor_j2"],  "mass_kg": 0.55},
+    {"name": "upper_arm",   "meshes": ["upper_arm"],           "mass_kg": 0.20},
+    {"name": "forearm",     "meshes": ["forearm", "motor_j3"], "mass_kg": 0.45},
+    {"name": "wrist_pitch", "meshes": ["wrist_pitch"],         "mass_kg": 0.10},
+    {"name": "wrist_roll",  "meshes": ["wrist_roll"],          "mass_kg": 0.10},
+    {"name": "tool_mount",  "meshes": ["tool_mount"],          "mass_kg": 0.15}
+  ],
+
+  "joints": [
+    {"name": "J1", "parent": "base_link",   "child": "turret",      "position": [0.0,  0.0,  62.5],  "axis": [0, 0, 1], "limit": [-180, 180], "kind": "stepper", "note": "base yaw, 16:1 inverted cycloid"},
+    {"name": "J2", "parent": "turret",      "child": "upper_arm",   "position": [0.0,  0.0, 118.65], "axis": [0, 1, 0], "limit": [-120, 120], "kind": "stepper", "note": "shoulder pitch, 21:1"},
+    {"name": "J3", "parent": "upper_arm",   "child": "forearm",     "position": [0.0,  0.0, 248.65], "axis": [0, 1, 0], "limit": [-120, 120], "kind": "stepper", "note": "elbow pitch, 16:1. J2->J3 = 130 mm"},
+    {"name": "J4", "parent": "forearm",     "child": "wrist_pitch", "position": [0.0,  0.0, 378.65], "axis": [0, 1, 0], "limit": [-120, 120], "kind": "servo",   "note": "wrist pitch, MG996R. Axis from the J4 drum/horn centre; UNVERIFIED (servo spline may sit 10 mm off)"},
+    {"name": "J5", "parent": "wrist_pitch", "child": "wrist_roll",  "position": [-10.0, 54.5, 413.6], "axis": [0, 0, 1], "limit": [-120, 120], "kind": "servo",   "note": "wrist roll, MG995. Axis = servo spline, 10 mm off the servo body centre"},
+    {"name": "J6", "parent": "wrist_roll",  "child": "tool_mount",  "position": [0.0, 54.5, 488.65], "axis": [0, 1, 0], "limit": [-120, 120], "kind": "servo",   "note": "wrist pitch 2, MG995"}
+  ],
+
+  "tcp": {
+    "parent": "tool_mount",
+    "position": [5.0, 9.5, 600.0],
+    "note": "GUESS. The hand is not in the CAD; this is roughly the palm, ~90 mm past the tool mount. Measure it and update."
+  },
+
+  "firmware_map": {
+    "_note": "model_deg = sign * firmware_deg + offset. All signs are UNVERIFIED: jog one joint +10 deg with the twin open and flip its sign here if the twin turns the other way (docs/calibration.md). offset is for a firmware zero that is not the straight-up pose. J3 = +1 is the reading under which the saved poses are physically possible (J2 -120 / J3 +120 folds the arm beside the base instead of through the desk).",
+    "J1": {"sign":  1, "offset": 0.0},
+    "J2": {"sign":  1, "offset": 0.0},
+    "J3": {"sign":  1, "offset": 0.0},
+    "J4": {"sign":  1, "offset": 0.0},
+    "J5": {"sign":  1, "offset": 0.0},
+    "J6": {"sign":  1, "offset": 0.0}
+  },
+
+  "gripper": {"firmware_joint": "GRIP", "kind": "continuous servo on a tendon spool", "range_pct": [0, 100]}
+}

@@ -1,0 +1,17 @@
+* text=auto
+
+# Shell scripts run inside WSL/Linux and break with CRLF endings
+# (`set: pipefail: invalid option name`).
+*.sh   text eol=lf
+
+# Binary CAD / media
+*.stl  binary
+*.step binary
+*.stp  binary
+*.f3d  binary
+*.mp4  binary
+*.jpg  binary
+*.png  binary
+*.webp binary
+*.xlsx binary
+*.zip  binary

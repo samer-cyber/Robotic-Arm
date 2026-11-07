@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "arm")(type "KiCad")(uri "${KIPRJMOD}/arm.kicad_sym")(options "")(descr "Robotic arm module blocks"))
+)

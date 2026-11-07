@@ -1,0 +1,11 @@
+{
+	"autodeskProduct":	"Fusion",
+	"type":	"script",
+	"author":	"Samer Haddadin",
+	"description":	{
+		"":	"Export the arm's link meshes and placement transforms for description/."
+	},
+	"version":	"1.0.0",
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}

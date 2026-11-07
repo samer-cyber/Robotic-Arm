@@ -1,0 +1,73 @@
+# OAK-D SR camera config for depthai_ros_driver.
+#
+# This is the vendor file that ships with the driver:
+#   /opt/ros/jazzy/share/depthai_ros_driver/config/oak_d_sr.yaml
+# plus one line: publishing `left` as well as `right`.
+#
+# Deliberately minimal. Every extra key is another chance to hand the driver a
+# value it quietly rejects, and this pipeline has already lost a day to exactly
+# that. Get depth publishing first, then add options back ONE AT A TIME,
+# checking `ros2 topic list | grep oak` after each.
+#
+# WHY IT CHANGED: the previous version said `i_pipeline_type: Stereo` and
+# produced no depth node at all - no /oak/stereo/* topics, so
+# `ros2 topic echo /oak/stereo/camera_info` answered "Could not determine the
+# type for the passed topic". Both configs Luxonis ships for this camera use
+# `Depth`, which is the type that actually builds a StereoDepth node.
+#
+# The node this applies to is `/oak`: camera.launch.py declares name="oak" and
+# namespace="", so the fully-qualified name is /oak and the key below matches.
+#
+# VERIFY IT TOOK EFFECT - the driver logs its choice at startup:
+#     Pipeline type: Depth
+# and you can ask the running node directly:
+#     ros2 param get /oak camera.i_pipeline_type
+# Parameters are read once, at node startup. Copying this file does nothing to
+# an already-running camera - you have to restart it.
+
+/oak:
+  ros__parameters:
+    camera:
+      i_pipeline_type: 'Depth'
+      i_nn_type: none
+
+      # --- stability over the WSL usbipd bridge ------------------------------
+      # Symptom this fixes:
+      #   Camera diagnostics error: Communication exception ...
+      #   Couldn't read data from stream: 'sys_logger_queue' (X_LINK_ERROR)
+      #
+      # sys_logger_queue IS the diagnostics stream. usbipd adds latency and
+      # jitter that the device does not expect, that queue stalls, and XLink
+      # tears down the whole connection over a stream that carries no data we
+      # use. Turning it off removes the failure mode rather than retrying it.
+      i_enable_diagnostics: false
+
+      # No-op while diagnostics are off - there is no diagnostics error left to
+      # restart from. Set now so that re-enabling diagnostics later recovers
+      # instead of dying.
+      i_restart_on_diagnostics_error: true
+
+      # If X_LINK_ERROR still shows up after the fps drop below, this is the
+      # bigger hammer: force USB2. Halves bandwidth, but usbipd forwards USB2
+      # far more reliably than SuperSpeed. Valid: LOW FULL HIGH SUPER SUPER_PLUS
+      # i_usb_speed: 'HIGH'
+
+    # 15 fps, not 30. Depth at 30 fps saturates the bridge and buys nothing:
+    # detection needs 2 agreeing frames, and the arm takes seconds to move.
+    # i_fps is a per-sensor parameter - it does NOT exist under `camera:`.
+    left:
+      i_publish_topic: true
+      i_fps: 15.0
+    right:
+      i_publish_topic: true
+      i_fps: 15.0
+
+    # Alignment settled 2026-09-02: /oak/stereo/camera_info reports
+    # oak_right_camera_optical_frame, so depth is aligned to the RIGHT camera
+    # and vla_params.yaml detects there. Left stays published for debugging.
+
+# Add back only after depth is confirmed working, one at a time:
+#    stereo:
+#      i_subpixel: true
+#      i_lr_check: true
+#      i_extended_disp: true     # vendor sr_rgbd.yaml sets this for the SR

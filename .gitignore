@@ -1,0 +1,51 @@
+# --- build output -----------------------------------------------------------
+.pio/
+build/
+install/
+log/
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+
+# --- editors / OS ------------------------------------------------------------
+.vscode/
+!firmware/.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Office lock files -------------------------------------------------------
+~$*
+
+# --- KiCad: backups, caches, lock files --------------------------------------
+*-backups/
+_autosave-*
+~*.lck
+*.lck
+fp-info-cache
+*.kicad_sch-bak
+*.kicad_prl
+jlcpcb/
+
+# --- local-only ----------------------------------------------------------------
+.env
+*.local.*
+# Vendor datasheets are copyrighted; they stay on disk and are linked from
+# docs/datasheets.md instead of being redistributed.
+hardware/datasheets/
+# Raw footage too big for git. Put originals here, commit trimmed clips to media/.
+media/raw/
+
+# --- runtime data --------------------------------------------------------------
+host/recordings/
+host/datasets/
+
+# --- tooling / generated ------------------------------------------------------
+.claude/
+*.rpt
+# Raw Fusion exports; the baked meshes in description/meshes are what is used.
+description/cad-raw/*.stl
+Parametric cycloidal generator/

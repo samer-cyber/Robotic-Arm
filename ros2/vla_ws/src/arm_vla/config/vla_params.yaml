@@ -1,0 +1,190 @@
+# =============================================================================
+#  3-DOF VLA pipeline parameters   --   MEASURED HARDWARE, 2026-09-02
+#
+#  Geometry is now the real arm. Two consequences worth knowing before you
+#  wonder why targets get refused:
+#
+#  1. L2 is short (65 mm) next to L1 (180 mm), so the arm cannot fold onto
+#     itself. Usable reach is a SHELL from 115 mm to 245 mm measured from the
+#     shoulder axis -- there is a dead zone in the middle, not just at the edge.
+#
+#  2. The camera looks straight DOWN from 610 mm above the desk, but the arm
+#     only reaches 245 mm sideways. Most of the frame is unreachable by
+#     construction. Objects must sit within ~245 mm of the base, and with the
+#     camera directly overhead the arm itself occupies the middle of the image.
+# =============================================================================
+
+vision_spatial_node:
+  ros__parameters:
+
+    # --- topics --------------------------------------------------------------
+    # detect_image_topic MUST be the camera the depth map is aligned to.
+    #
+    # MEASURED 2026-09-02, no longer a guess: the driver reports
+    #     /oak/stereo/camera_info  frame_id = oak_right_camera_optical_frame
+    # so depth is aligned to the RIGHT camera and detection happens there too.
+    # That matches the vendor oak_d_sr.yaml, which enables only `right`.
+    #
+    # Detecting in `left` against right-aligned depth was the earlier default
+    # and it is wrong by the stereo baseline - the same pixel means a different
+    # thing in each image. The node compares the two frame_ids at startup and
+    # says so rather than letting it through.
+    detect_image_topic: "/oak/right/image_raw"
+    detect_info_topic:  "/oak/right/camera_info"
+    depth_image_topic:  "/oak/stereo/image_raw"
+    depth_info_topic:   "/oak/stereo/camera_info"
+
+    # --- detection -----------------------------------------------------------
+    # color      HSV thresholding here on the host  (current)
+    # yolo       host-side ultralytics, needs: pip install ultralytics
+    # spatial_nn on-camera network, 3D straight off the Myriad X - see the
+    #            _setup_spatial_nn docstring for the driver config it needs
+    detector: "color"
+    default_label: "blue"
+    spatial_detections_topic: "/oak/nn/spatial_detections"
+    min_blob_area_px: 400
+    sync_slop_s: 0.10
+
+    # --- depth sampling ------------------------------------------------------
+    # Top-down: the desk is 610 mm below the camera, so an object on it reads
+    # 610 minus its own height. This band accepts objects up to ~260 mm tall
+    # and rejects everything below the desk plane, which is where stereo noise
+    # and holes live.
+    depth_min_mm: 350.0
+    depth_max_mm: 700.0
+
+    # Table-plane rejection. The desk is ~610 mm below the camera, so anything
+    # at or past 595 mm IS the desk. Two guards, because they fail differently:
+    # the depth cutoff keeps table pixels out of the median in the first place,
+    # the height check catches whatever survives that but still reconstructs to
+    # table level once the extrinsics are applied.
+    #
+    # Cost: an object shorter than about 15 mm reads past the cutoff and gets
+    # rejected as table. Raise table_depth_mm if you need to pick up something
+    # flatter than that.
+    table_depth_mm: 595.0
+    min_height_above_table_mm: 8.0
+    depth_roi_shrink: 0.5      # sample the inner 50% of the box, not the edges
+    min_depth_pixels: 30
+
+    # --- how many frames must agree before we commit to a number -------------
+    # 2, not 5: with best-effort depth-1 subscriptions over the WSL USB bridge,
+    # waiting for 5 agreeing frames was costing more in latency than it bought
+    # in confidence. The agreement_mm gate below is what actually rejects a
+    # wobbling target, and it still applies at 2.
+    samples_required: 2
+    # 4.0 s, not 2.0: the usbipd bridge stalls for a beat now and then, and
+    # a 2 s window turned a hiccup into a failed DetectTarget. The
+    # subscriptions are already lossy (BEST_EFFORT, depth 1), so a longer
+    # window costs nothing when frames are flowing - it only buys patience
+    # when they are not.
+    sample_window_s: 4.0
+    agreement_mm: 25.0
+
+    # --- camera optical frame -> arm base frame ------------------------------
+    # OVERHEAD / TOP-DOWN eye-to-hand. The node BUILDS the transform from the
+    # four mount numbers below, so you never hand-write a rotation matrix.
+    #
+    # Base frame  : origin on the desk, on the J1 axis, +Z up.
+    # Camera frame: +X image-right, +Y image-DOWN, +Z along the optical axis,
+    #               which for a top-down mount points at the table.
+    #
+    # At yaw 0 that resolves to:
+    #     cam +Z (optical axis) -> base -Z      looking down
+    #     cam +Y (image down)   -> base -X
+    #     cam +X (image right)  -> base -Y
+    # equivalent to rpy (180, 0, -90). Verified numerically.
+    #
+    # ONE THING YOU MUST CHECK: yaw_deg. How the camera is rotated about its
+    # own vertical axis is not derivable from a height measurement, and getting
+    # it wrong swaps or mirrors X and Y - targets go to the wrong side of the
+    # arm, confidently. Put an object 200 mm in front of the base (+X) and run
+    # /vla/detect. It should read roughly (200, 0). If X and Y come back
+    # swapped or negated, try yaw_deg 90, 180 or 270. See LAUNCH.md Stage D.
+    extrinsics:
+      calibrated: true
+      mode: overhead              # overhead | matrix
+
+      overhead:
+        # MEASURED 2026-09-02, was an assumed 610.0:
+        #   depth to the top face of the blue box = 491 mm
+        #   box height                            =  50 mm
+        #   optical centre above the desk         = 541 mm
+        # The old 610 put every target 69 mm too high. Nothing would have
+        # flagged it - a wrong height still solves cleanly, the tip just
+        # arrives in the wrong place.
+        height_mm: 541.0
+        offset_x_mm: 0.0          # camera centre relative to the J1 axis,
+        offset_y_mm: 0.0          # measured in the base frame. 0,0 = directly
+                                  # above the base.
+        yaw_deg: 0.0              # camera rotation about the vertical
+
+      # Only read when mode is "matrix". This is the form calibrate_extrinsics
+      # prints, and the escape hatch when the mount is not square to the table
+      # - a couple of degrees of tilt at 610 mm is ~10 mm of error at the edge
+      # of the workspace, which this idealised model cannot represent.
+      translation_mm: [0.0, 0.0, 610.0]
+      rotation_rpy_deg: [180.0, 0.0, -90.0]
+
+    publish_debug_image: true
+
+
+vla_commander_node:
+  ros__parameters:
+
+    # --- hardware ------------------------------------------------------------
+    port: "/dev/ttyUSB0"
+    # 115200. The CH340 over usbipd was losing bursts at 500000 - see
+    # firmware/src/ArmConfig.h. Must match HOST_BAUD in the firmware, so
+    # reflash BEFORE changing this.
+    baud: 115200
+    simulate: false            # true = run the whole pipeline with no arm
+
+    # --- geometry, millimetres ----- MEASURED 2026-09-02 ---------------------
+    geometry:
+      l0_mm: 107.65            # desk to the J2 (shoulder) axis
+      l1_mm: 180.00            # shoulder axis to elbow axis
+      l2_mm: 65.00             # elbow axis to the flat tip
+      base_offset_mm: 0.0      # radial offset from the J1 axis to the J2 axis
+                               # (not supplied - still assumed zero)
+
+    # --- soft limits, degrees. Must match the firmware limits or tighter. ----
+    limits:
+      # Full rotation. This roughly doubles the usable workspace: points behind
+      # the base solve as base+/-180, which the old +/-90 limit rejected.
+      # Verified: reachable fraction of the bounding box goes 27% -> 45%.
+      base_deg:     [-180.0, 180.0]
+      shoulder_deg: [-20.0, 135.0]
+      elbow_deg:    [-150.0, 0.0]
+
+    # --- target envelope, checked before any motion --------------------------
+    envelope:
+      z_floor_mm: 10.0         # never drive the tip below this
+      z_ceiling_mm: 600.0
+      min_radius_mm: 60.0      # base-axis singularity guard, see kinematics_3dof
+
+    # --- motion --------------------------------------------------------------
+    home_pose_deg: [0.0, 90.0, -90.0]
+
+    # 30 mm, not 60. At 60 mm the standoff for a target at r=189 lands at
+    # r=129 - close to the 115 mm inner dead zone - which folds the elbow to
+    # -147.8 deg, only 2.2 deg off its limit. Near that boundary a few mm of
+    # detection noise swings the elbow a lot. 30 mm leaves 31.5 deg of margin.
+    approach_standoff_mm: 30.0
+    # Was 5.0 when the camera looked at the arm horizontally and the detection
+    # was an object's front face. Looking straight down, the detection is the
+    # TOP face, already the point you want to touch, so pulling back radially
+    # would just miss it.
+    touch_backoff_mm: 0.0
+    # Deliberately slow for first motion. Direction-over-UART has only ever
+    # been proven on a single joint at +/-5 deg; these are the first coordinated
+    # three-axis moves it will ever run. Raise once that is boring.
+    feed_transit: 0.08
+    feed_approach: 0.05
+    dwell_s: 1.0
+    move_timeout_s: 45.0
+    return_home_after: true
+    # Must comfortably exceed the vision node's sample_window_s (4.0), or the
+    # commander gives up while vision is still legitimately collecting.
+    detect_timeout_s: 12.0
+    publish_joint_states: true

@@ -1,0 +1,10 @@
+# Full pipeline: text -> detection -> IK -> motion.
+string command            # "touch the red cup"
+bool dry_run              # solve and report, move nothing
+---
+bool success
+string message
+float32 theta_base
+float32 theta_shoulder
+float32 theta_elbow
+geometry_msgs/PointStamped target_base

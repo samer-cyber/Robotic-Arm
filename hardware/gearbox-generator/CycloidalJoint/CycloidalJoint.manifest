@@ -1,0 +1,11 @@
+{
+	"autodeskProduct":	"Fusion",
+	"type":	"script",
+	"author":	"Samer Haddadin",
+	"description":	{
+		"":	"Inverted cycloidal joint generator v7: drum output, 1 or 2 big bearings, NEMA D-shaft input, optional arm link."
+	},
+	"version":	"7.0.0",
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}

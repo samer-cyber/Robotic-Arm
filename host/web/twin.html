@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Arm Twin</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{
+  --bg:#12161d;--panel:#1a1f28ee;--line:#2c3340;--fg:#e8ebf1;--dim:#8d96a8;
+  --accent:#5aa9e6;--ghost:#5aa9e6;--good:#4ade80;--warn:#fbbf24;--bad:#f87171;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font:13px/1.45 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#view{position:fixed;inset:0}
+aside{position:fixed;top:12px;right:12px;bottom:12px;width:330px;max-width:calc(100vw - 24px);
+  background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;
+  padding:14px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+@media(max-width:700px){aside{top:auto;height:46vh;left:12px;width:auto}}
+h1{font-size:14px;margin:0;font-weight:650;letter-spacing:.01em}
+h2{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin:0 0 8px;font-weight:600}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.top{display:flex;align-items:center;gap:8px}
+.top a{margin-left:auto;color:var(--dim);text-decoration:none;font-size:12px}
+.top a:hover{color:var(--fg)}
+button{background:#252b36;color:var(--fg);border:1px solid var(--line);border-radius:7px;
+  padding:6px 10px;font:inherit;cursor:pointer}
+button:hover{background:#2e3542}
+button:disabled{opacity:.45;cursor:default}
+button.p{background:var(--accent);border-color:var(--accent);color:#07131f;font-weight:650}
+button.stop{background:var(--bad);border-color:var(--bad);color:#1d0606;font-weight:750}
+button.on{border-color:var(--accent);color:var(--accent)}
+.pill{padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:650;border:1px solid var(--line);color:var(--dim)}
+.pill.ok{color:var(--good);border-color:#2b5138}.pill.warn{color:var(--warn);border-color:#5a4a1e}
+.pill.bad{color:var(--bad);border-color:#5a2b2b}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--dim);text-align:right;padding:2px 4px;font-size:11px}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:3px 4px;border-top:1px solid #232937}
+td.g{color:var(--ghost)}
+.msg{font-size:12px;color:var(--dim);min-height:1.4em}
+.msg.bad{color:var(--bad)}.msg.ok{color:var(--good)}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--dim);cursor:pointer}
+input[type=range]{flex:1;accent-color:var(--accent)}
+.kbd{font:11px ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--dim)}
+.hint{color:var(--dim);font-size:11.5px}
+#err{position:fixed;left:16px;bottom:16px;color:var(--bad);font-size:12px;max-width:50vw}
+</style>
+</head>
+<body>
+<div id="view"></div>
+<aside>
+  <div class="top">
+    <h1>Arm twin</h1>
+    <span id="pEn" class="pill">motors off</span>
+    <span id="pMv" class="pill">idle</span>
+    <a href="/">panel &rarr;</a>
+  </div>
+
+  <div class="row">
+    <button id="bEn">Enable</button>
+    <button id="bStop">Stop</button>
+    <button id="bEstop" class="stop">E-STOP</button>
+  </div>
+
+  <section>
+    <h2>Target</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button id="mPos" class="on" title="Solve for the tool position only. The wrist is free.">Position</button>
+      <button id="mPose" title="Solve for position and orientation. Press R to rotate the gizmo.">+ Orientation</button>
+      <button id="bSnap" title="Put the target back on the real arm">Snap to arm</button>
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <button id="bGo" class="p" disabled>Go</button>
+      <label class="chk"><input type="checkbox" id="follow"> follow on release</label>
+    </div>
+    <div class="row">
+      <span class="hint" style="width:34px">feed</span>
+      <input type="range" id="feed" min="0.05" max="1" step="0.05" value="0.3">
+      <span id="feedv" class="hint" style="width:30px;text-align:right">0.30</span>
+    </div>
+    <div id="msg" class="msg"></div>
+  </section>
+
+  <section>
+    <h2>Joints <span style="text-transform:none;letter-spacing:0">(model deg)</span></h2>
+    <table>
+      <thead><tr><th>joint</th><th>arm</th><th>ghost</th><th>fw cmd</th></tr></thead>
+      <tbody id="jt"></tbody>
+    </table>
+    <div class="hint" id="tcp" style="margin-top:6px"></div>
+  </section>
+
+  <section>
+    <h2>Gripper</h2>
+    <div class="row">
+      <button data-grip="close">Close</button>
+      <button data-grip="open">Open</button>
+      <button data-grip="stop">Stop</button>
+      <span id="gstate" class="hint"></span>
+    </div>
+  </section>
+
+  <div class="hint">
+    Drag the gizmo to move the target. <span class="kbd">W</span> move,
+    <span class="kbd">R</span> rotate, <span class="kbd">Space</span> E-STOP.
+    Nothing moves until you press Go.
+  </div>
+</aside>
+<div id="err"></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TransformControls } from "three/addons/controls/TransformControls.js";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
+
+const $ = id => document.getElementById(id);
+const showErr = t => { $("err").textContent = t; };
+
+// ---------------------------------------------------------------- scene ---
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);          // the arm is Z-up, millimetres
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+$("view").appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x12161d);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 1, 20000);
+camera.position.set(980, -1080, 760);
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(0, 0, 290);
+orbit.enableDamping = true;
+orbit.update();
+
+scene.add(new THREE.HemisphereLight(0xdfe8f5, 0x2a2420, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(500, -700, 900); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fc3ff, 0.8); rim.position.set(-600, 600, 300); scene.add(rim);
+
+const grid = new THREE.GridHelper(1000, 20, 0x3a4352, 0x262c37);
+grid.rotation.x = Math.PI / 2;                     // GridHelper is XZ; lay it on the desk
+scene.add(grid);
+const axes = new THREE.AxesHelper(80); axes.position.set(0, 0, 0.5); scene.add(axes);
+
+// Centre the arm in the space LEFT of the side panel, not behind it.
+function fit() {
+  const W = innerWidth, H = innerHeight, P = W > 700 ? 354 : 0;
+  camera.aspect = W / H;
+  if (P) camera.setViewOffset(W + P, H, P, 0, W, H); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+}
+addEventListener("resize", fit);
+fit();
+
+// --------------------------------------------------------- the two arms ---
+const liveMat = new THREE.MeshStandardMaterial({ color: 0x8e98a6, metalness: 0.15, roughness: 0.55 });
+const ghostMat = new THREE.MeshStandardMaterial({
+  color: 0x5aa9e6, transparent: true, opacity: 0.28, depthWrite: false, metalness: 0, roughness: 0.4 });
+
+let spec, N = 0;
+const live = { pivots: [], tcp: null }, ghost = { pivots: [], tcp: null };
+
+function buildArm(target, geoms, mat) {
+  const root = new THREE.Group();
+  const linkFrame = {};                       // link name -> Object3D carrying its meshes
+  linkFrame[spec.links[0].name] = root;
+  const posOf = { [spec.links[0].name]: [0, 0, 0] };
+  for (const j of spec.joints) posOf[j.child] = j.position;
+  for (const j of spec.joints) {
+    const pivot = new THREE.Group();
+    const p = j.position, pp = posOf[j.parent];
+    pivot.position.set(p[0] - pp[0], p[1] - pp[1], p[2] - pp[2]);
+    pivot.userData.axis = new THREE.Vector3(...j.axis).normalize();
+    linkFrame[j.parent].add(pivot);
+    linkFrame[j.child] = pivot;
+    target.pivots.push(pivot);
+  }
+  for (const l of spec.links) {
+    const m = new THREE.Mesh(geoms[l.name], mat);
+    linkFrame[l.name].add(m);
+  }
+  const tcp = new THREE.Group();
+  const t = spec.tcp.position, tp = posOf[spec.tcp.parent];
+  tcp.position.set(t[0] - tp[0], t[1] - tp[1], t[2] - tp[2]);
+  linkFrame[spec.tcp.parent].add(tcp);
+  target.tcp = tcp;
+  scene.add(root);
+  return root;
+}
+
+function setPose(arm, qDeg) {
+  arm.pivots.forEach((pv, i) =>
+    pv.quaternion.setFromAxisAngle(pv.userData.axis, THREE.MathUtils.degToRad(qDeg[i] || 0)));
+}
+
+// firmware <-> model, same rule as armlink/kinematics.py
+const fwToModel = fw => spec.joints.map(j => {
+  const m = spec.firmware_map[j.name] || { sign: 1, offset: 0 };
+  return m.sign * (fw[j.name] ?? 0) + m.offset;
+});
+const modelToFw = q => spec.joints.map((j, i) => {
+  const m = spec.firmware_map[j.name] || { sign: 1, offset: 0 };
+  return (q[i] - m.offset) / m.sign;
+});
+
+// ---------------------------------------------------------------- target ---
+const target = new THREE.Group();
+const ball = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16),
+  new THREE.MeshBasicMaterial({ color: 0x5aa9e6 }));
+target.add(ball, new THREE.AxesHelper(45));
+scene.add(target);
+const gizmo = new TransformControls(camera, renderer.domElement);
+gizmo.setSize(0.8);
+gizmo.attach(target);
+scene.add(gizmo);
+gizmo.addEventListener("dragging-changed", e => {
+  orbit.enabled = !e.value;
+  if (!e.value) { solveNow(); if ($("follow").checked) setTimeout(go, 120); }
+});
+gizmo.addEventListener("objectChange", () => scheduleSolve());
+
+let mode = "pos";
+$("mPos").onclick = () => { mode = "pos"; $("mPos").classList.add("on"); $("mPose").classList.remove("on"); gizmo.setMode("translate"); solveNow(); };
+$("mPose").onclick = () => { mode = "pose"; $("mPose").classList.add("on"); $("mPos").classList.remove("on"); solveNow(); };
+
+// ------------------------------------------------------------------ state ---
+let S = { joints: [] }, qLive = null, qGhost = null, ghostOk = false, solving = false, pending = false;
+
+async function post(body) {
+  const r = await fetch("/api", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body) });
+  return r.json();
+}
+function msg(t, cls) { $("msg").textContent = t || ""; $("msg").className = "msg " + (cls || ""); }
+
+function snapTarget() {
+  if (!qLive) return;
+  qGhost = qLive.slice(); setPose(ghost, qGhost); scene.updateMatrixWorld(true);
+  ghost.tcp.getWorldPosition(target.position);
+  ghost.tcp.getWorldQuaternion(target.quaternion);
+  ghostOk = true; ball.material.color.set(0x5aa9e6); $("bGo").disabled = true; msg("");
+  renderTable();
+}
+$("bSnap").onclick = snapTarget;
+
+let solveTimer = null;
+function scheduleSolve() { if (!solveTimer) solveTimer = setTimeout(() => { solveTimer = null; solveNow(); }, 70); }
+async function solveNow() {
+  if (!spec || !qGhost) return;
+  if (solving) { pending = true; return; }
+  solving = true;
+  const p = target.position, q = target.quaternion;
+  try {
+    const r = await post({ action: "ik", pos: [p.x, p.y, p.z],
+      quat: mode === "pose" ? [q.x, q.y, q.z, q.w] : null, seed: qGhost });
+    if (r.q) { qGhost = r.q; setPose(ghost, qGhost); }
+    ghostOk = !!r.ok;
+    ball.material.color.set(ghostOk ? 0x5aa9e6 : 0xf87171);
+    $("bGo").disabled = !ghostOk;
+    msg(ghostOk ? `solved, ${r.pos_err_mm.toFixed(1)} mm` : (r.reason || r.text || "no solution"),
+        ghostOk ? "" : "bad");
+    renderTable();
+  } catch (e) { msg("host error: " + e, "bad"); }
+  solving = false;
+  if (pending) { pending = false; solveNow(); }
+}
+
+async function go() {
+  if (!ghostOk || !qGhost) return;
+  const r = await post({ action: "go_model", q: qGhost, feed: +$("feed").value });
+  msg(r.ok ? "moving" : (r.text || "refused"), r.ok ? "ok" : "bad");
+}
+$("bGo").onclick = go;
+
+function renderTable() {
+  if (!spec) return;
+  const fw = qGhost ? modelToFw(qGhost) : [];
+  $("jt").innerHTML = spec.joints.map((j, i) =>
+    `<tr><td>${j.name}</td><td>${qLive ? qLive[i].toFixed(1) : "-"}</td>` +
+    `<td class="g">${qGhost ? qGhost[i].toFixed(1) : "-"}</td><td>${qGhost ? fw[i].toFixed(1) : "-"}</td></tr>`).join("");
+  if (live.tcp) {
+    const v = new THREE.Vector3(); live.tcp.getWorldPosition(v);
+    $("tcp").textContent = `arm tool point: x ${v.x.toFixed(0)}  y ${v.y.toFixed(0)}  z ${v.z.toFixed(0)} mm`;
+  }
+}
+
+function pill(el, on, txt, cls) { el.textContent = txt; el.className = "pill " + (on ? cls : ""); }
+
+async function poll() {
+  try {
+    const st = await (await fetch("/api/state")).json();
+    S = st;
+    const fw = {}; st.joints.forEach(j => fw[j.name] = j.pos);
+    qLive = fwToModel(fw);
+    setPose(live, qLive);
+    if (!qGhost) snapTarget();
+    if (!st.moving && $("msg").textContent === "moving") msg("arrived (as far as an open-loop arm knows)", "ok");
+    pill($("pEn"), st.enabled, st.enabled ? "motors on" : "motors off", "ok");
+    pill($("pMv"), st.moving, st.moving ? "moving" : "idle", "warn");
+    $("bEstop").textContent = st.estop ? "Clear E-STOP" : "E-STOP";
+    $("bEn").textContent = st.enabled ? "Disable" : "Enable";
+    const g = st.joints.find(j => j.name === "GRIP");
+    if (g) $("gstate").textContent = `${g.grip || ""} ${g.pos.toFixed(0)}%`;
+    renderTable();
+  } catch (e) { }
+  setTimeout(poll, 250);
+}
+
+$("bEn").onclick = () => post({ action: "cmd", line: "enable " + (S.enabled ? 0 : 1) });
+$("bStop").onclick = () => post({ action: "cmd", line: "stop" });
+$("bEstop").onclick = () => post({ action: "cmd", line: S.estop ? "estop clear" : "estop" });
+document.querySelectorAll("[data-grip]").forEach(b => b.onclick = async () => {
+  const r = await post({ action: "grip", verb: b.dataset.grip });
+  if (!r.ok) msg(r.text || "gripper refused", "bad");
+});
+$("feed").oninput = () => $("feedv").textContent = (+$("feed").value).toFixed(2);
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" && e.target.type !== "checkbox") return;
+  if (e.key === " ") { $("bEstop").click(); e.preventDefault(); }
+  if (e.key === "w" || e.key === "W") gizmo.setMode("translate");
+  if (e.key === "r" || e.key === "R") { gizmo.setMode("rotate"); if (mode !== "pose") $("mPose").click(); }
+});
+
+// Console / automation handle: twin.setTarget(200, 50, 150) then twin.go()
+window.twin = {
+  setTarget(x, y, z) { target.position.set(x, y, z); return solveNow(); },
+  go, snap: snapTarget,
+  get ghost() { return qGhost; }, get live() { return qLive; }, get ok() { return ghostOk; },
+};
+
+// ------------------------------------------------------------------ boot ---
+async function boot() {
+  spec = await (await fetch("/description/arm.json")).json();
+  N = spec.joints.length;
+  const loader = new STLLoader();
+  const geoms = {};
+  await Promise.all(spec.links.map(async l => {
+    const g = await loader.loadAsync(`/description/meshes/${l.name}.stl`);
+    g.computeVertexNormals();
+    geoms[l.name] = g;
+  }));
+  buildArm(live, geoms, liveMat);
+  buildArm(ghost, geoms, ghostMat);
+  poll();
+}
+boot().catch(e => showErr("could not load the arm description: " + e));
+
+(function loop() { requestAnimationFrame(loop); orbit.update(); renderer.render(scene, camera); })();
+</script>
+</body>
+</html>

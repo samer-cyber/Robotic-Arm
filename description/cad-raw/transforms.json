@@ -1,0 +1,13 @@
+{
+  "_note": "Occurrence transforms from 'Full arm (no PCB) v25' (Fusion 360), row-major 4x4, translation in mm. Written by description/tools/fusion_export (Fusion script).",
+  "base":        {"occurrence": "Body 1 v3:1",      "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]},
+  "turret":      {"occurrence": "Body 2:1",         "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]},
+  "upper_arm":   {"occurrence": "Body 3:1",         "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]},
+  "forearm":     {"occurrence": "Body 4:1",         "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,-70.0, 0,0,0,1]},
+  "wrist_pitch": {"occurrence": "Body 5:1",         "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,-70.0, 0,0,0,1]},
+  "wrist_roll":  {"occurrence": "Body 6:1",         "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,-70.0, 0,0,0,1]},
+  "tool_mount":  {"occurrence": "Body 7:1",         "matrix": [1,0,0,0, 0,1,0,0, 0,0,1,-40.0, 0,0,0,1]},
+  "motor_j1":    {"occurrence": "NEMA17 40mm v3:1", "matrix": [0,0,-1,329.0, 0,1,0,0, 1,0,0,114.0, 0,0,0,1]},
+  "motor_j2":    {"occurrence": "NEMA17 40mm v3:2", "matrix": [0,0,-1,329.0, 1,0,0,98.0, 0,-1,0,118.65, 0,0,0,1]},
+  "motor_j3":    {"occurrence": "NEMA17 40mm v3:3", "matrix": [0,-1,0,0, 1,0,0,98.0, 0,0,1,-80.35, 0,0,0,1]}
+}
